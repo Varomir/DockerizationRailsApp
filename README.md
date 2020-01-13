@@ -1,2 +1,2 @@
 # DokerizationRailsApp
-Dockerization an existing Ruby On Rails application for development purposes
+Dockerization an existing Ruby On Rails application for local development purposes.

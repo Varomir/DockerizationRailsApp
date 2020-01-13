@@ -1,0 +1,65 @@
+version: '3'
+services:
+  cache:
+    image: memcached
+    ports:
+    - "11211:11211"
+
+  redis:
+    image: redis:latest
+    command: redis-server --requirepass a4e46ee2-19c8-4299-96e2-3df09dfeb641
+#    volumes:
+#      - ./redis.conf:/usr/local/etc/redis.conf:rw
+#      - /usr/local/var/db/redis:/data
+#    environment:
+#      - REDIS_PASSWORD=a4e46ee2-19c8-4299-96e2-3df09dfeb641
+    #      REDIS_URL: redis://127.0.0.1:6379/
+#      - ALLOW_EMPTY_PASSWORD=yes
+    ports:
+      - "6379:6379"
+
+#    deploy:
+#      replicas: 1
+  db:
+    image: postgres:9.6
+    env_file: .env
+    environment:
+      POSTGRES_USER: procore_db
+      POSTGRES_PASSWORD: qwer1234
+      POSTGRES_DB: procore_development
+      PGDATA: /var/lib/postgresql/data
+#    volumes:
+#      - /tmp/db:/var/lib/postgresql/data
+#      - postgres:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+#    restart: always
+  web:
+    build:
+      context: .
+      dockerfile: DockerLocal
+      args:
+        - bundler_version=1.17.3
+#    command: bash -c "rm -f tmp/pids/server.pid && bundle exec rails server -p 3000 -b '0.0.0.0'"
+    command: bash -c "rm -f ./tmp/pids/server.pid && bundle install && /etc/init.d/memcached start && bundle exec rails server -p 3000 -b '0.0.0.0'"
+#    command: bash -c "rm -f ./tmp/pids/server.pid && /etc/init.d/memcached start && bundle exec rails server -p 3000 -b '0.0.0.0'"
+#    command: bash -c "rm -f ./tmp/pids/server.pid && /etc/init.d/memcached start"
+#    command: bash -c "rm -f ./tmp/pids/server.pid && bundle exec rails server -p 3000 -b '0.0.0.0'"
+#    command: bash -c "rm -f ./tmp/pids/server.pid && /etc/init.d/memcached start && bundle exec rake db:create db:setup --trace"
+#    command: bash -c "bundle exec rails server -p 3000 -b '0.0.0.0'"
+#    command: bundle exec rails server -p 3000 -b '0.0.0.0'
+#    command: bash -c "/bin/sh"
+#    command: bash -c "bundle exec puma -C config/puma.rb"
+    volumes:
+#      - .:/procore
+#      - ${PWD}:/procore:rw
+      - .:/procore:rw
+    ports:
+      - "3000:3000"
+#      - "4000:4000"
+    links:
+      - db
+    depends_on:
+      - 'db'
+      - 'redis'
+#      - 'cache'

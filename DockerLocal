@@ -1,0 +1,191 @@
+# Use Debian stretch image (Linux Kernel 4.9) to keep us close to production (Linux Kernel 4.4)
+FROM ruby:2.6.3-stretch AS procore-common
+
+LABEL procore.app="procore"
+LABEL quay.expires-after="8w"
+
+RUN apt-get update -qq && \
+  apt-get install apt-transport-https -y --no-install-recommends
+
+RUN curl -sL https://deb.nodesource.com/setup_10.x | bash -
+
+RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - && \
+  echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
+
+RUN \
+  apt update -qq && \
+  apt install -y --no-install-recommends \
+  build-essential \
+  ca-certificates \
+  default-jdk \
+  graphicsmagick \
+  libedit-dev \
+  libicu-dev \
+  libjemalloc-dev \
+  libpq-dev \
+  libqrencode-dev \
+  libreadline-dev \
+  libselinux1-dev \
+  libssl-dev \
+  libxml2-dev \
+  libxslt1-dev \
+  locales \
+  nodejs \
+  postgresql-client \
+#  python-dev \
+#  python-pip \
+  memcached \
+  qrencode \
+  xsltproc \
+  yarn \
+  aspell \
+  aspell-en
+
+#RUN pip install --upgrade pip setuptools
+
+#RUN pip install --upgrade awscli
+
+RUN localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8
+
+RUN mkdir -p /var/run/puma
+
+RUN rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+ENV APP_DIR /procore
+
+WORKDIR $APP_DIR
+
+ENV RAILS_ENV build
+
+ENV DATABASE_URL "postgresql://procore_db:qwer1234@db/procore_development"
+
+ARG bundler_version
+ENV BUNDLER_VERSION ${bundler_version}
+
+ADD Gemfile*      $APP_DIR/
+ADD gems          $APP_DIR/gems
+ADD engines       $APP_DIR/engines
+
+RUN \
+#  gem install rails
+  gem install rails -v 5.0.7.2
+
+RUN \
+#  gem install bundler
+#  gem install bundler -v 1.17.3
+  gem install bundler -v ${bundler_version}
+
+RUN \
+  bundle check --path=/usr/local/bundle --gemfile=Gemfile.next || \
+  bundle install --path=/usr/local/bundle --gemfile=Gemfile.next \
+    --deployment \
+    --without test assets \
+    --no-binstubs \
+    --jobs=4 \
+    --retry=3
+
+RUN \
+  bundle check --path=/usr/local/bundle --gemfile=Gemfile || \
+  bundle install --path=/usr/local/bundle --gemfile=Gemfile \
+    --deployment \
+    --without test assets \
+    --no-binstubs \
+    --jobs=4 \
+    --retry=3
+
+FROM segment/chamber:2 AS chamber
+FROM procore-common AS procore
+
+COPY --from=chamber /chamber /bin/chamber
+
+ENV LOGIN_SERVICE_HOST ""
+ENV MY_PROCORE_HOST ""
+ENV WEB_ROOT ""
+
+#ADD . $APP_DIR
+VOLUME $APP_DIR
+
+RUN mkdir $APP_DIR/log
+RUN mkdir -p $APP_DIR/tmp/pids
+RUN mkdir -p $APP_DIR/public/wrench && \
+  mkdir -p $APP_DIR/public/build
+
+COPY spec/mocks/contact_mock.rb $APP_DIR/spec/mocks/
+
+ADD Procfile*     $APP_DIR/
+ADD Rakefile      $APP_DIR/
+ADD config.ru     $APP_DIR/
+ADD bin           $APP_DIR/bin
+ADD doc           $APP_DIR/doc
+ADD config        $APP_DIR/config
+ADD db            $APP_DIR/db
+ADD lib           $APP_DIR/lib
+ADD public        $APP_DIR/public
+ADD script        $APP_DIR/script
+ADD support_tools $APP_DIR/support_tools
+ADD vendor/assets $APP_DIR/vendor/assets
+ADD wrench        $APP_DIR/wrench
+ADD hydra_clients $APP_DIR/hydra_clients
+ADD app           $APP_DIR/app
+ADD webvalve      $APP_DIR/webvalve
+
+RUN bundle exec rake i18n:pseudolocalize
+
+FROM procore-common AS procore-ci
+
+RUN \
+  bundle install --path=/usr/local/bundle --gemfile=Gemfile.next \
+    --deployment \
+    --with test assets \
+    --no-binstubs \
+    --jobs=4 \
+    --retry=3
+
+RUN \
+  bundle install --path=/usr/local/bundle --gemfile=Gemfile \
+    --deployment \
+    --with test assets \
+    --no-binstubs \
+    --jobs=4 \
+    --retry=3
+
+#
+#ADD .git $APP_DIR/.git
+
+# Install add-apt-repository
+RUN \
+  apt update -qq && \
+  apt install -y --no-install-recommends \
+  software-properties-common
+
+# Add Docker repository
+RUN curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -
+RUN \
+  add-apt-repository \
+  "deb [arch=amd64] https://download.docker.com/linux/debian \
+  $(lsb_release -cs) \
+  stable"
+
+# Install additional packages
+RUN \
+  apt update -qq && \
+  apt install -y --no-install-recommends \
+  docker-ce \
+  zip \
+  unzip
+
+ENV CI true
+ENV REDIS_URL "redis://procore:a4e46ee2-19c8-4299-96e2-3df09dfeb641@redis:6379/"
+ENV RAILS_ENV development
+ENV RACK_ENV development
+ENV DATABASE_URL "postgresql://procore_db:qwer1234@db/procore_development"
+ENV MEMCACHED_SERVER "cache:11211"
+ENV COVERAGE rails
+
+#RUN /etc/init.d/memcached start
+COPY entrypoint.sh /usr/bin/
+RUN chmod +x /usr/bin/entrypoint.sh
+ENTRYPOINT ["entrypoint.sh"]
+EXPOSE 3000
+#EXPOSE 4000
+CMD ["rails", "server", "-b", "0.0.0.0"]
