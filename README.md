@@ -20,4 +20,13 @@ Dockerization an existing Ruby On Rails application for local development purpos
 ```curl http://127.0.0.1:3000/login --verbose```
 
 ## Usefull docker specific commands:
+```docker images``` - shows the list of images
+```docker ps -a``` - shows the list of in-memory containers
+```docker-compose up```
+```docker-compose stop```
+```docker-compose start```
+```docker-compose down```
+```docker exec -it web bash```
+```docker rmi hash```
+
 
