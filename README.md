@@ -6,6 +6,10 @@ Dockerization an existing Ruby On Rails application for local development purpos
 ```docker --version``` and ```docker-compose --version```
  - Download source code with ROR application
 ```git clone git@github.com:procore/procore.git```
+ * Note: For Mac OS users. There is makes sense to increase a "Docker system memory" size.
+Stop & close Docker, change config file with command like this:
+```sed -i .bak 's/2048/10240/g' /Users/`id -un`/Library/Group\ Containers/group.com.docker/settings.json```
+And run Docker again.
 
 ## Steps to run ROR with docker-compose.
  - Copy all files to the "procore" source directoy app.
@@ -20,13 +24,21 @@ Dockerization an existing Ruby On Rails application for local development purpos
 ```curl http://127.0.0.1:3000/login --verbose```
 
 ## Usefull docker specific commands:
+
 ```docker images``` - shows the list of images
+
 ```docker ps -a``` - shows the list of in-memory containers
+
 ```docker-compose up```
+
 ```docker-compose stop```
+
 ```docker-compose start```
+
 ```docker-compose down```
+
 ```docker exec -it web bash```
+
 ```docker rmi hash```
 
 
