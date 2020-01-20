@@ -28,12 +28,12 @@ services:
       POSTGRES_PASSWORD: qwer1234
       POSTGRES_DB: procore_development
       PGDATA: /var/lib/postgresql/data
-#    volumes:
-#      - /tmp/db:/var/lib/postgresql/data
+    volumes:
+      - ~/PGDATA:/var/lib/postgresql/data:delegated
 #      - postgres:/var/lib/postgresql/data
     ports:
       - "5432:5432"
-#    restart: always
+    restart: always
   web:
     build:
       context: .
@@ -53,7 +53,7 @@ services:
     volumes:
 #      - .:/procore
 #      - ${PWD}:/procore:rw
-      - .:/procore:rw
+      - .:/procore:delegated
     ports:
       - "3000:3000"
 #      - "4000:4000"

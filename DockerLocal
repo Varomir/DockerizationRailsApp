@@ -180,12 +180,11 @@ ENV RAILS_ENV development
 ENV RACK_ENV development
 ENV DATABASE_URL "postgresql://procore_db:qwer1234@db/procore_development"
 ENV MEMCACHED_SERVER "cache:11211"
-ENV COVERAGE rails
+ENV DATABASE_CLEANER_ALLOW_REMOTE_DATABASE_URL true
 
 #RUN /etc/init.d/memcached start
 COPY entrypoint.sh /usr/bin/
 RUN chmod +x /usr/bin/entrypoint.sh
 ENTRYPOINT ["entrypoint.sh"]
 EXPOSE 3000
-#EXPOSE 4000
 CMD ["rails", "server", "-b", "0.0.0.0"]
